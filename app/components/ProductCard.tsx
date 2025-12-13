@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { animate, AnimatePresence, easeOut, motion } from "motion/react";
 import {
   ArrowUpAZ,
   ArrowDownZA,
@@ -10,6 +11,9 @@ import {
 } from "lucide-react";
 import { api } from "../lib/axios";
 import { Product } from "../lib/products";
+import { useSearch } from "@/context/SearchContext";
+import Link from "next/link";
+import useSWR from "swr";
 
 // Fetch products function
 const getProducts = async (): Promise<Product[]> => {
@@ -26,9 +30,6 @@ type SortOption =
   | "rating-high-low";
 
 const ProductPage = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [selectedSort, setSelectedSort] = useState<SortOption>("a-z");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -39,29 +40,39 @@ const ProductPage = () => {
     tags: [] as string[],
   });
 
-  // Fetch products on component mount
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true);
-      try {
-        const data = await getProducts();
-        setProducts(data);
-        setFilteredProducts(data);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const { searchQuery, setSearchQuery } = useSearch(); // from context
 
-    fetchProducts();
-  }, []);
+  // using swr for data fetching and caching
+  const {
+    data: products = [],
+    isLoading,
+    error,
+  } = useSWR("/products", getProducts, {
+    revalidateOnFocus: false,
+  });
 
   // Apply sorting and filtering whenever dependencies change
-  useEffect(() => {
+  const filteredProducts = useMemo(() => {
     let result = [...products];
 
-    // Apply sorting
+    // search ->
+    if (searchQuery.trim() !== "") {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter((product) => {
+        if (product.title.toLowerCase().includes(query)) {
+          return true;
+        }
+        if (product.tags.some((tag) => tag.toLowerCase().includes(query))) {
+          return true;
+        }
+        if (product.category?.toLowerCase().includes(query)) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    // sorting ->
     switch (selectedSort) {
       case "a-z":
         result.sort((a, b) => a.title.localeCompare(b.title));
@@ -80,7 +91,7 @@ const ProductPage = () => {
         break;
     }
 
-    // Apply price filters
+    // Apply price filters -->
     if (filters.minPrice) {
       const min = parseFloat(filters.minPrice);
       result = result.filter((product) => product.price >= min);
@@ -91,21 +102,21 @@ const ProductPage = () => {
       result = result.filter((product) => product.price <= max);
     }
 
-    // Apply rating filter
+    // Apply rating filter -->
     if (filters.minRating) {
       const minRating = parseFloat(filters.minRating);
       result = result.filter((product) => product.rating >= minRating);
     }
 
-    // Apply tag filters
+    // Apply tag filters -->
     if (filters.tags.length > 0) {
       result = result.filter((product) =>
         product.tags.some((tag) => filters.tags.includes(tag))
       );
     }
 
-    setFilteredProducts(result);
-  }, [products, selectedSort, filters]);
+    return result;
+  }, [products, selectedSort, filters, searchQuery]);
 
   // Get all unique tags for filter options
   const allTags = Array.from(
@@ -171,11 +182,29 @@ const ProductPage = () => {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className=" mx-auto px-4 py-8">
+      {searchQuery && (
+        <div className="mb-4 p-3 bg-[#181818] rounded-lg border border-orange-500/20">
+          <p>
+            Searching for:{" "}
+            <span className="font-medium text-orange-500">
+              "{searchQuery}"
+              <button
+                onClick={() => setSearchQuery("")}
+                className="ml-2 text-sm text-gray-400 hover:text-white"
+              >
+                ✕ Clear
+              </button>
+            </span>
+          </p>
+        </div>
+      )}
+
       {/* Header and Filter Controls */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mt-8 pb-5 border-b border-white/10 gap-4">
-        <h1 className="text-2xl font-bold">All Products</h1>
-
+        <h1 className="text-2xl font-bold">
+          {searchQuery ? "Search Results" : "All Products"}{" "}
+        </h1>
         <div className="flex items-center gap-4 relative">
           {/* Sort Dropdown */}
           <div className="relative">
@@ -327,7 +356,16 @@ const ProductPage = () => {
 
       {/* Results Count */}
       <div className="mt-6 text-gray-400">
-        Showing {filteredProducts.length} of {products.length} products
+        {searchQuery ? (
+          <p>
+            Found {filteredProducts.length} product
+            {filteredProducts.length !== 1 ? "s" : ""} matching "{searchQuery}"
+          </p>
+        ) : (
+          <p>
+            Showing {filteredProducts.length} of {products.length} products
+          </p>
+        )}
       </div>
 
       {/* Loading State */}
@@ -337,14 +375,27 @@ const ProductPage = () => {
         </div>
       ) : (
         /* Product Cards Grid */
-        <div className="flex flex-wrap gap-5 justify-center mt-8">
+        <motion.div
+          initial={{ opacity: 0, filter: "blur(10px)" }}
+          animate={{ opacity: 1, filter: "blur(0px)" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="flex flex-wrap gap-5 justify-center mt-8"
+        >
           {filteredProducts.length > 0 ? (
             filteredProducts.map((product) => (
-              <div
+              <motion.div
+                initial={{ opacity: 0, filter: "blur(10px)" }}
+                animate={{ opacity: 1, filter: "blur(0px)" }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
                 key={product.id}
                 className="bg-[#181818] p-4 rounded-xl w-sm flex flex-col border border-white/5 hover:border-white/10 transition-all hover:scale-[1.02]"
               >
-                <div className="w-full h-54 rounded-xl relative">
+                <motion.div
+                  initial={{ opacity: 0, filter: "blur(10px)" }}
+                  animate={{ opacity: 1, filter: "blur(0px)" }}
+                  transition={{ duration: 0.9, ease: "easeInOut" }}
+                  className="w-full h-54 rounded-xl relative"
+                >
                   <img
                     src={product.thumbnail}
                     alt={product.title}
@@ -353,8 +404,8 @@ const ProductPage = () => {
                   <p className="px-2 py-1 text-xs rounded-sm bg-amber-600 text-neutral-900 inline-block absolute top-0 left-0">
                     Stock: {product.stock}
                   </p>
-                </div>
-                <div className="flex flex-col mt-5 gap-1 flex-grow">
+                </motion.div>
+                <div className="flex flex-col mt-5 gap-1 grow">
                   <h1 className="text-lg font-medium line-clamp-1">
                     {product.title}
                   </h1>
@@ -376,11 +427,16 @@ const ProductPage = () => {
                       <p>{product.rating.toFixed(1)}</p>
                     </span>
                   </div>
-                  <button className="py-2.5 mt-5 w-full bg-orange-500 text-white font-medium rounded-md hover:bg-orange-600 transition-colors cursor-pointer">
-                    View Product
-                  </button>
+                  <Link
+                    href={`/products/${product.id}`}
+                    className="block w-full"
+                  >
+                    <button className="py-2.5 mt-5 w-full bg-orange-500 text-white font-medium rounded-md hover:bg-orange-600 transition-colors cursor-pointer">
+                      View Product
+                    </button>
+                  </Link>
                 </div>
-              </div>
+              </motion.div>
             ))
           ) : (
             <div className="text-center py-16">
@@ -394,7 +450,7 @@ const ProductPage = () => {
               </button>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
     </div>
   );
