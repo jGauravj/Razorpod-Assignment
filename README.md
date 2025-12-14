@@ -119,3 +119,11 @@ cd <project-folder>
 npm install
 npm run dev
 ```
+
+---
+
+# My Portfolio ->
+
+- [Portfolio](https://gauravdev.vercel.app/)
+- [Linkedin](https://www.linkedin.com/in/gaurav-jangir-4b2427221)
+- [X.com](https://x.com/Gauravjangir07)
