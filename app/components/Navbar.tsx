@@ -114,13 +114,13 @@ const Navbar = () => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.35, ease: "easeInOut" }}
-            className="md:hidden overflow-hidden px-6 pb-4 flex flex-col gap-4"
+            className="md:hidden overflow-hidden px-6 pb-4 flex flex-col gap-4 divide-y"
           >
             {navItems.map((item) => (
               <li
                 key={item}
                 onClick={() => setIsMenuOpen(false)}
-                className="py-2 border-b border-white/10 text-neutral-200 hover:text-orange-500"
+                className="py-2  border-white/10 text-neutral-200 hover:text-orange-500"
               >
                 {item}
               </li>
