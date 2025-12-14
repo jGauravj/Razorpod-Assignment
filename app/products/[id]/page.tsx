@@ -44,7 +44,15 @@ const ProductDetailPage = () => {
   if (error || !product) return <Error />;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <motion.div
+      initial={{ opacity: 0, filter: "blur(10px)" }}
+      animate={{ opacity: 1, filter: "blur(0px)" }}
+      transition={{
+        duration: 0.45,
+        ease: "easeOut",
+      }}
+      className="max-w-7xl mx-auto px-4 py-8"
+    >
       {/* Breadcrumb */}
       <div className="mb-6">
         <Link
@@ -60,7 +68,7 @@ const ProductDetailPage = () => {
         {/* Left Column - Images */}
         <div>
           {/* Main Image */}
-          <div className="bg-[#181818] rounded-xl p-4 mb-4 overflow-hidden h-[384px]">
+          <div className="bg-[#181818] rounded-xl p-4 mb-4 overflow-hidden h-96">
             <AnimatePresence mode="wait">
               <motion.img
                 key={product.images?.[selectedImage] || product.thumbnail}
@@ -171,15 +179,15 @@ const ProductDetailPage = () => {
           {/* Price Section */}
           <div className="mb-8 p-6 bg-[#181818] rounded-xl border border-white/10">
             <div className="flex items-center gap-4 mb-4">
-              <div className="text-4xl font-bold">
+              <div className="sm:text-4xl text-xl font-bold">
                 ${discountedPrice.toFixed(2)}
               </div>
               {product.discountPercentage > 0 && (
                 <>
-                  <div className="text-xl text-gray-400 line-through">
+                  <div className="sm:text-xl text-sm text-gray-400 line-through">
                     ${product.price.toFixed(2)}
                   </div>
-                  <div className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm">
+                  <div className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full sm:text-sm text-xs">
                     Save {product.discountPercentage}%
                   </div>
                 </>
@@ -215,12 +223,12 @@ const ProductDetailPage = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-4">
-              <button className="flex-1 py-3 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 transition-colors flex items-center justify-center gap-2">
+            <div className="sm:flex sm:flex-row sm:gap-4 flex flex-col gap-3  ">
+              <button className="flex-1 sm:py-3  sm:text-base text-sm py-2 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 transition-colors flex items-center justify-center gap-2">
                 <ShoppingCart size={20} />
                 Add to Cart
               </button>
-              <button className="flex-1 py-3 bg-transparent border border-orange-500 text-orange-500 font-medium rounded-lg hover:bg-orange-500/10 transition-colors">
+              <button className="flex-1  sm:py-3 sm:text-base text-sm py-2 bg-transparent border border-orange-500 text-orange-500 font-medium rounded-lg hover:bg-orange-500/10 transition-colors">
                 Buy Now
               </button>
             </div>
@@ -275,7 +283,14 @@ const ProductDetailPage = () => {
           <h2 className="text-2xl font-bold mb-6">Customer Reviews</h2>
           <div className="space-y-4">
             {product.reviews.map((review, index) => (
-              <div
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  duration: 0.4,
+                  ease: "easeOut",
+                }}
                 key={index}
                 className="bg-[#181818] p-6 rounded-xl border border-white/5"
               >
@@ -295,12 +310,12 @@ const ProductDetailPage = () => {
                 <p className="text-sm text-gray-400 mt-2">
                   {new Date(review.date).toLocaleDateString()}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

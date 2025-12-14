@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { animate, AnimatePresence, easeOut, motion } from "motion/react";
 import {
   ArrowUpAZ,
@@ -14,6 +14,7 @@ import { Product } from "../lib/products";
 import { useSearch } from "@/context/SearchContext";
 import Link from "next/link";
 import useSWR from "swr";
+import Pagination from "./Pagination";
 
 // Fetch products function
 const getProducts = async (): Promise<Product[]> => {
@@ -39,6 +40,7 @@ const ProductPage = () => {
     minRating: "",
     tags: [] as string[],
   });
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { searchQuery, setSearchQuery } = useSearch(); // from context
 
@@ -49,7 +51,16 @@ const ProductPage = () => {
     error,
   } = useSWR("/products", getProducts, {
     revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 60 * 1000,
+    keepPreviousData: true,
   });
+
+  const ITEM_PER_PAGE = 6;
+
+  useEffect(() => {
+    console.log("Is Loading.... ", isLoading);
+  }, [isLoading]);
 
   // Apply sorting and filtering whenever dependencies change
   const filteredProducts = useMemo(() => {
@@ -118,6 +129,14 @@ const ProductPage = () => {
     return result;
   }, [products, selectedSort, filters, searchQuery]);
 
+  // pagination -->
+  const totalPages = Math.ceil(filteredProducts.length / ITEM_PER_PAGE);
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * ITEM_PER_PAGE;
+    const end = start + ITEM_PER_PAGE;
+    return filteredProducts.slice(start, end);
+  }, [filteredProducts, currentPage]);
+
   // Get all unique tags for filter options
   const allTags = Array.from(
     new Set(products.flatMap((product) => product.tags))
@@ -135,6 +154,7 @@ const ProductPage = () => {
 
   // Clear all filters
   const clearFilters = () => {
+    console.log("clicked");
     setFilters({
       minPrice: "",
       maxPrice: "",
@@ -142,7 +162,13 @@ const ProductPage = () => {
       tags: [],
     });
     setSelectedSort("a-z");
+    setSearchQuery("");
   };
+
+  // Reset to page 1 when filters, sort, or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedSort, filters, searchQuery]);
 
   // Get sort option display text
   const getSortDisplayText = (option: SortOption) => {
@@ -180,6 +206,11 @@ const ProductPage = () => {
       label: "Rating: High to Low",
     },
   ];
+
+  // discount & total price
+  const getDiscountedPrice = (price: number, discount: number) => {
+    return price - price * (discount / 100);
+  };
 
   return (
     <div className=" mx-auto px-4 py-8">
@@ -274,85 +305,97 @@ const ProductPage = () => {
       </div>
 
       {/* Filter Panel */}
-      {isFilterOpen && (
-        <div className="mt-6 p-6 bg-[#181818] rounded-xl border border-white/10">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Price Range */}
-            <div>
-              <h3 className="text-lg font-medium mb-3">Price Range</h3>
-              <div className="flex gap-3">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Min Price
-                  </label>
-                  <input
-                    type="number"
-                    value={filters.minPrice}
-                    onChange={(e) =>
-                      setFilters({ ...filters, minPrice: e.target.value })
-                    }
-                    placeholder="0"
-                    className="w-full px-3 py-2 bg-[#222] rounded-md border border-white/10 text-white"
-                  />
+      <AnimatePresence>
+        {isFilterOpen && (
+          <motion.div
+            key="filters"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: 0.35,
+              ease: "easeInOut",
+            }}
+            className="mt-6 p-6 bg-[#181818] rounded-xl border border-white/10"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Price Range */}
+              <div>
+                <h3 className="text-lg font-medium mb-3">Price Range</h3>
+                <div className="flex gap-3">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">
+                      Min Price
+                    </label>
+                    <input
+                      type="number"
+                      value={filters.minPrice}
+                      onChange={(e) =>
+                        setFilters({ ...filters, minPrice: e.target.value })
+                      }
+                      placeholder="0"
+                      className="w-full px-3 py-2 bg-[#222] rounded-md border border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">
+                      Max Price
+                    </label>
+                    <input
+                      type="number"
+                      value={filters.maxPrice}
+                      onChange={(e) =>
+                        setFilters({ ...filters, maxPrice: e.target.value })
+                      }
+                      placeholder="1000"
+                      className="w-full px-3 py-2 bg-[#222] rounded-md border border-white/10 text-white"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Max Price
-                  </label>
-                  <input
-                    type="number"
-                    value={filters.maxPrice}
-                    onChange={(e) =>
-                      setFilters({ ...filters, maxPrice: e.target.value })
-                    }
-                    placeholder="1000"
-                    className="w-full px-3 py-2 bg-[#222] rounded-md border border-white/10 text-white"
-                  />
+              </div>
+
+              {/* Rating Filter */}
+              <div>
+                <h3 className="text-lg font-medium mb-3">Minimum Rating</h3>
+                <select
+                  value={filters.minRating}
+                  onChange={(e) =>
+                    setFilters({ ...filters, minRating: e.target.value })
+                  }
+                  className="w-full px-3 py-2 bg-[#222] rounded-md border border-white/10 text-white"
+                >
+                  <option value="">Any rating</option>
+                  <option value="1">1+ stars</option>
+                  <option value="2">2+ stars</option>
+                  <option value="3">3+ stars</option>
+                  <option value="4">4+ stars</option>
+                  <option value="5">5 stars</option>
+                </select>
+              </div>
+
+              {/* Tags Filter */}
+              <div>
+                <h3 className="text-lg font-medium mb-3">Tags</h3>
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1">
+                  {allTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => toggleTag(tag)}
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                        filters.tags.includes(tag)
+                          ? "bg-orange-500 text-white"
+                          : "bg-[#222] text-gray-300 hover:bg-[#333]"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
-
-            {/* Rating Filter */}
-            <div>
-              <h3 className="text-lg font-medium mb-3">Minimum Rating</h3>
-              <select
-                value={filters.minRating}
-                onChange={(e) =>
-                  setFilters({ ...filters, minRating: e.target.value })
-                }
-                className="w-full px-3 py-2 bg-[#222] rounded-md border border-white/10 text-white"
-              >
-                <option value="">Any rating</option>
-                <option value="1">1+ stars</option>
-                <option value="2">2+ stars</option>
-                <option value="3">3+ stars</option>
-                <option value="4">4+ stars</option>
-                <option value="5">5 stars</option>
-              </select>
-            </div>
-
-            {/* Tags Filter */}
-            <div>
-              <h3 className="text-lg font-medium mb-3">Tags</h3>
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1">
-                {allTags.map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => toggleTag(tag)}
-                    className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                      filters.tags.includes(tag)
-                        ? "bg-orange-500 text-white"
-                        : "bg-[#222] text-gray-300 hover:bg-[#333]"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Results Count */}
       <div className="mt-6 text-gray-400">
@@ -375,83 +418,109 @@ const ProductPage = () => {
         </div>
       ) : (
         /* Product Cards Grid */
-        <motion.div
-          initial={{ opacity: 0, filter: "blur(10px)" }}
-          animate={{ opacity: 1, filter: "blur(0px)" }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="flex flex-wrap gap-5 justify-center mt-8"
-        >
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((product) => (
-              <motion.div
-                initial={{ opacity: 0, filter: "blur(10px)" }}
-                animate={{ opacity: 1, filter: "blur(0px)" }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                key={product.id}
-                className="bg-[#181818] p-4 rounded-xl w-sm flex flex-col border border-white/5 hover:border-white/10 transition-all hover:scale-[1.02]"
-              >
+        <motion.div className="flex flex-wrap gap-5 justify-center mt-8">
+          <AnimatePresence>
+            {paginatedProducts.length > 0 ? (
+              paginatedProducts.map((product) => (
                 <motion.div
                   initial={{ opacity: 0, filter: "blur(10px)" }}
                   animate={{ opacity: 1, filter: "blur(0px)" }}
-                  transition={{ duration: 0.9, ease: "easeInOut" }}
-                  className="w-full h-54 rounded-xl relative"
+                  exit={{ opacity: 0, filter: "blur(8px)" }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  key={product.id}
+                  className="will-change-[opacity,filter] bg-[#181818] p-4 rounded-xl w-sm flex flex-col border border-white/5 hover:border-white/10 transition-all hover:scale-[1.02]"
                 >
-                  <img
-                    src={product.thumbnail}
-                    alt={product.title}
-                    className="w-full h-full object-contain rounded-lg"
-                  />
-                  <p className="px-2 py-1 text-xs rounded-sm bg-amber-600 text-neutral-900 inline-block absolute top-0 left-0">
-                    Stock: {product.stock}
-                  </p>
-                </motion.div>
-                <div className="flex flex-col mt-5 gap-1 grow">
-                  <h1 className="text-lg font-medium line-clamp-1">
-                    {product.title}
-                  </h1>
-                  <span className="flex items-center gap-2">
-                    <p className="text-sm text-gray-400">
-                      {product.tags.join(", ")}
+                  <div className="w-full sm:h-54 h-44 rounded-lg relative bg-neutral-800">
+                    <img
+                      src={product.thumbnail}
+                      alt={product.title}
+                      className="w-full h-full object-contain rounded-lg"
+                    />
+                    <p
+                      className={`px-2 py-1 text-xs rounded-lg inline-block absolute top-0 left-0 ${
+                        product.stock > 50
+                          ? "bg-green-500/20 text-green-400"
+                          : "bg-yellow-500/20 text-yellow-400"
+                      } `}
+                    >
+                      Stock: {product.stock}
                     </p>
-                  </span>
-                  <div className="flex items-center justify-between mt-auto">
-                    <p className="text-lg font-semibold">
-                      $ {product.price.toFixed(2)}
-                    </p>
-                    <span className="flex items-center gap-1">
-                      <Star
-                        size={14}
-                        className="text-orange-400"
-                        fill="orange"
-                      />
-                      <p>{product.rating.toFixed(1)}</p>
-                    </span>
                   </div>
-                  <Link
-                    href={`/products/${product.id}`}
-                    className="block w-full"
-                  >
-                    <button className="py-2.5 mt-5 w-full bg-orange-500 text-white font-medium rounded-md hover:bg-orange-600 transition-colors cursor-pointer">
-                      View Product
-                    </button>
-                  </Link>
-                </div>
-              </motion.div>
-            ))
-          ) : (
-            <div className="text-center py-16">
-              <h3 className="text-xl font-medium mb-2">No products found</h3>
-              <p className="text-gray-400">Try adjusting your filters</p>
-              <button
-                onClick={clearFilters}
-                className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+                  <div className="flex flex-col mt-5 gap-1 grow">
+                    <h1 className="text-lg font-medium line-clamp-1">
+                      {product.title}
+                    </h1>
+                    <span className="flex items-center gap-2 -mt-1">
+                      <p className="text-sm text-gray-400">
+                        {product.tags.join(", ")}
+                      </p>
+                    </span>
+                    <div className="flex items-center justify-between mt-auto">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-lg font-semibold text-white">
+                          $
+                          {getDiscountedPrice(
+                            product.price,
+                            product.discountPercentage
+                          ).toFixed(2)}
+                        </span>
+
+                        {product.discountPercentage > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-400 line-through">
+                              ${product.price.toFixed(2)}
+                            </span>
+                            <span className="text-xs text-green-400">
+                              Save {product.discountPercentage}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <span className="flex items-center gap-1">
+                        <Star
+                          size={14}
+                          className="text-orange-400"
+                          fill="orange"
+                        />
+                        <p>{product.rating.toFixed(1)}</p>
+                      </span>
+                    </div>
+                    <Link
+                      href={`/products/${product.id}`}
+                      className="block w-full"
+                    >
+                      <button className="sm:py-2 py-1 text-sm mt-5 w-full bg-orange-500 text-white font-medium rounded-md hover:bg-orange-600 transition-colors cursor-pointer">
+                        View Product
+                      </button>
+                    </Link>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, filter: "blur(10px)" }}
+                animate={{ opacity: 1, filter: "blur(0px)" }}
+                transition={{ duration: 0.3, ease: "easeIn" }}
+                className="text-center py-16"
               >
-                Clear all filters
-              </button>
-            </div>
-          )}
+                <h3 className="text-xl font-medium mb-2">No products found</h3>
+                <p className="text-gray-400">Try adjusting your filters</p>
+                <button
+                  onClick={clearFilters}
+                  className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+                >
+                  Clear all filters
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 };
