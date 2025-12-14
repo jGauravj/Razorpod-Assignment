@@ -7,7 +7,7 @@ import Link from "next/link";
 import { api } from "@/app/lib/axios";
 import { Product } from "@/app/lib/products";
 import Loading from "./loading";
-import Error from "@/app/not-found";
+import Error from "@/app/error";
 import useSWR from "swr";
 import { AnimatePresence, motion } from "motion/react";
 
@@ -41,7 +41,13 @@ const ProductDetailPage = () => {
   }, [discountedPrice, quantity]);
 
   if (isLoading) return <Loading />;
-  if (error || !product) return <Error />;
+  if (error || !product)
+    return (
+      <Error
+        error={error as Error & { digest?: string }}
+        reset={() => window.location.reload()}
+      />
+    );
 
   return (
     <motion.div
