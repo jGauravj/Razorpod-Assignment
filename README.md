@@ -76,28 +76,29 @@ It demonstrates **performance optimization, type safety, smooth UI animations, a
 
 ## 🗂️ Folder Structure
 
-app
+```
+app/
+├── components/
+│   ├── Navbar.tsx
+│   ├── Pagination.tsx
+│   └── ProductCard.tsx        # Product listing, filters & sorting
 │
-├── components
-│ ├── Navbar.tsx
-│ ├── Pagination.tsx
-│ └── ProductCard.tsx // Product listing, filters & sorting
+├── products/
+│   └── [id]/
+│       ├── page.tsx           # Product detail page
+│       └── loading.tsx
 │
-├── products
-│ └── [id]
-│ ├── page.tsx // Product detail page
-│ └── loading.tsx
+├── context/
+│   └── SearchContext.tsx      # Global search state
+│
+├── lib/
+│   ├── axios.ts               # Axios API instance
+│   └── products.ts            # Product types
 │
 ├── layout.tsx
-├── page.tsx // Home / Product listing page
+├── page.tsx                   # Home / Product listing page
 ├── not-found.tsx
-│
-lib
-├── axios.ts // Axios API instance
-└── products.ts // Product types (TypeScript)
-│
-context
-└── SearchContext.tsx // Global search state
+```
 
 ---
 
